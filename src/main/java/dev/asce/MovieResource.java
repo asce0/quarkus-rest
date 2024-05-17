@@ -6,6 +6,7 @@ import jakarta.ws.rs.core.Response;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Path("/movies")
 public class MovieResource {
@@ -30,6 +31,33 @@ public class MovieResource {
     @Path("/create")
     public Response createMovie(String newMovie){
         movies.add(newMovie);
+        return Response.ok(movies).build();
+    }
+
+    @PUT
+    @Produces(MediaType.TEXT_PLAIN)
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Path("/update/{movieToUpdate}")
+    public Response updateMovie(
+            @PathParam("movieToUpdate") String movieToUpdate,
+            @QueryParam("movie") String updatedMovie){
+        //This line converts the movies list into a stream. Streams are used to perform operations on collections in a functional style.
+        movies = movies.stream().map(movie -> {
+            if(movie.equals(movieToUpdate)){
+                return updatedMovie;
+            } else {
+                return movie;
+            }
+        }).collect(Collectors.toList());
+        return Response.ok(movies).build();
+    }
+
+    @DELETE
+    @Produces(MediaType.TEXT_PLAIN)
+    @Consumes(MediaType.TEXT_PLAIN)
+    @Path("/delete/{movieToDelete}")
+    public Response deleteMovie(@PathParam("movieToDelete") String movieToDelete){
+        movies.remove(movieToDelete);
         return Response.ok(movies).build();
     }
 }
