@@ -1,63 +1,70 @@
 package dev.asce;
 
+import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+
 
 @Path("/movies")
 public class MovieResource {
-    public static List<String> movies = new ArrayList<>();
 
     @GET
-    @Produces(MediaType.TEXT_PLAIN)
-    public Response getMovies() {
-        return Response.ok(movies).build();
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<Movie> getMovies() {
+        return Movie.listAll();
     }
 
     @GET
-    @Produces(MediaType.TEXT_PLAIN)
+    @Produces(MediaType.APPLICATION_JSON)
     @Path("/size")
-    public Integer countMovies(){
-        return movies.size();
+    public long countMovies(){
+        return Movie.count();
+    }
+
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/{id}")
+    public Movie getMovie(@PathParam("id") long id) {
+        return Movie.findById(id);
     }
 
     @POST
-    @Produces(MediaType.TEXT_PLAIN) // it will return a list of movies
-    @Consumes(MediaType.TEXT_PLAIN) // because the endpoint will consume a new movie from the request
+    @Transactional
+    @Produces(MediaType.APPLICATION_JSON) // it will return a list of movies
+    @Consumes(MediaType.APPLICATION_JSON) // because the endpoint will consume a new movie from the request
     @Path("/create")
-    public Response createMovie(String newMovie){
-        movies.add(newMovie);
-        return Response.ok(movies).build();
+    public Response createMovie(Movie newMovie){
+        Movie.persist(newMovie);
+        return Response.ok(newMovie).status(Response.Status.CREATED).build();
     }
 
     @PUT
-    @Produces(MediaType.TEXT_PLAIN)
-    @Consumes(MediaType.TEXT_PLAIN)
-    @Path("/update/{movieToUpdate}")
+    @Transactional
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Path("/update/{id}")
     public Response updateMovie(
-            @PathParam("movieToUpdate") String movieToUpdate,
-            @QueryParam("movie") String updatedMovie){
-        //This line converts the movies list into a stream. Streams are used to perform operations on collections in a functional style.
-        movies = movies.stream().map(movie -> {
-            if(movie.equals(movieToUpdate)){
-                return updatedMovie;
-            } else {
-                return movie;
-            }
-        }).collect(Collectors.toList());
-        return Response.ok(movies).build();
+            @PathParam("id") long id,
+            Movie updatedMovie){
+        Movie movie = Movie.findById(id);
+        if (movie == null) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+        movie.title = updatedMovie.title;
+        return Response.ok(movie).build();
     }
 
     @DELETE
-    @Produces(MediaType.TEXT_PLAIN)
-    @Consumes(MediaType.TEXT_PLAIN)
-    @Path("/delete/{movieToDelete}")
-    public Response deleteMovie(@PathParam("movieToDelete") String movieToDelete){
-        movies.remove(movieToDelete);
-        return Response.ok(movies).build();
+    @Transactional
+    @Path("/delete/{id}")
+    public Response deleteMovie(@PathParam("id") long id){
+        boolean deleted = Movie.deleteById(id);
+        if (deleted) {
+            return Response.noContent().build();
+        } else{
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
     }
 }
